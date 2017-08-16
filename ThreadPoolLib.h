@@ -8,6 +8,7 @@
 #include<strings.h>
 #include<string>
 #include<list>
+#include<semaphore.h>
 
 using namespace std;
 
@@ -28,10 +29,13 @@ class TaskList
 {
 	private:
 	list<Task> myTaskList;
-	
+	pthread_mutex_t _task_mutex;
+
 	public:
 	TaskList();
 	void addTask(void*(*func)(void*,void*),void*,void*);
+	void popFront();
+	Task getFront();
 	int getSize();
 };
 class ThreadPool
@@ -43,12 +47,12 @@ class ThreadPool
 	pthread_t *tids;
 	int size;
 
-	protected:
-	//void* child_func(void*);
+	public:
+	friend void* child_func(void*);
 
 	public:
 	ThreadPool(int);
 	~ThreadPool();
 	void initPool();
-	//void addTask(void*(*func)(void*,void*),void*,void*);
+	void addTask(void*(*func)(void*,void*),void*,void*);
 };
