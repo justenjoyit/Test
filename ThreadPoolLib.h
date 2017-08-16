@@ -14,10 +14,14 @@ using namespace std;
 class Task
 {
 	public:
-	void* (*myTask)(void*);
-	Task(void*(*func)(void*))
+	void* (*myTask)(void*,void*);
+	void* args;
+	void* rtns;
+	Task(void*(*func)(void*,void*),void*a,void*r)
 	{
 		myTask=func;
+		args=a;
+		rtns=r;
 	}
 };
 class TaskList
@@ -27,7 +31,7 @@ class TaskList
 	
 	public:
 	TaskList();
-	void addTask(void*(*func)(void*));
+	void addTask(void*(*func)(void*,void*),void*,void*);
 	int getSize();
 };
 class ThreadPool
@@ -39,8 +43,12 @@ class ThreadPool
 	pthread_t *tids;
 	int size;
 
+	protected:
+	//void* child_func(void*);
+
 	public:
 	ThreadPool(int);
 	~ThreadPool();
-	void initPool(void*(*func)(void*),void*args);
+	void initPool();
+	//void addTask(void*(*func)(void*,void*),void*,void*);
 };

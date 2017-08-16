@@ -1,8 +1,8 @@
 #include"ThreadPoolLib.h"
 
-void* create_thread(void*args)
+void* create_thread(void*args,void* r)
 {
-	cout<<"create thread"<<endl;
+	cout<<"create thread"<<((int*)args)[0]<<endl;
 }
 
 int main()
@@ -11,18 +11,20 @@ int main()
 	cin>>n;
 
 	ThreadPool myThreadPool(n);
-	myThreadPool.initPool(create_thread,NULL);
+	myThreadPool.initPool();
 	
 	TaskList myList;
 	cout<<myList.getSize()<<endl;
-	myList.addTask(create_thread);
-	myList.addTask(create_thread);
+	void*r=NULL;
+	int a1=1,a2=2,a3=3;
+	myList.addTask(create_thread,(void*)&a1,r);
+	myList.addTask(create_thread,(void*)&a2,r);
 	cout<<myList.getSize()<<endl;
 
-	void* (*myTask)(void*);
+	void* (*myTask)(void*,void*);
 	myTask=create_thread;
 
-	void* args=NULL;
-	(*myTask)(args);
+	
+	(*myTask)((void*)&a3,r);
 	return 0;
 }

@@ -15,11 +15,18 @@ ThreadPool::~ThreadPool()
 	cout<<"end"<<endl;
 }
 
-void ThreadPool::initPool(void* (*func) (void*),void*args)
+void* child_func(void* args)
+{
+	//while(1)
+	//{
+		//wait signal
+	//}
+}
+void ThreadPool::initPool()
 {
 	for(int i=0;i<size;++i)
 	{
-		pthread_create(&tids[i],NULL,func,args);
+		pthread_create(&tids[i],NULL,child_func,NULL);
 	}
 }
 
@@ -27,13 +34,12 @@ TaskList::TaskList()
 {
 }
 
-void TaskList::addTask(void*(*func)(void*))
+void TaskList::addTask(void*(*func)(void*,void*),void*a,void*r)
 {
-	Task temp(func);
+	Task temp(func,a,r);
 	myTaskList.push_back(temp);
 	cout<<"TaskList::myTask ";
-	void *args=NULL;
-	(*(myTaskList.back().myTask))(args);
+	(*(myTaskList.back().myTask))(a,r);
 }
 
 int TaskList::getSize()
