@@ -31,6 +31,9 @@ void TaskList::addTask(void*(*func)(void*))
 {
 	Task temp(func);
 	myTaskList.push_back(temp);
+	cout<<"TaskList::myTask ";
+	void *args=NULL;
+	(*(myTaskList.back().myTask))(args);
 }
 
 int TaskList::getSize()

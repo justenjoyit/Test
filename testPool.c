@@ -18,5 +18,11 @@ int main()
 	myList.addTask(create_thread);
 	myList.addTask(create_thread);
 	cout<<myList.getSize()<<endl;
+
+	void* (*myTask)(void*);
+	myTask=create_thread;
+
+	void* args=NULL;
+	(*myTask)(args);
 	return 0;
 }
