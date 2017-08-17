@@ -9,9 +9,12 @@
 #include<string>
 #include<list>
 #include<semaphore.h>
+#include<vector>
 
 using namespace std;
 
+void* manageThread(void*);
+void* manageTask(void*);
 class Task
 {
 	public:
@@ -24,6 +27,8 @@ class Task
 		args=a;
 		rtns=r;
 	}
+	Task();
+	Task(const Task&);
 };
 class TaskList
 {
@@ -45,29 +50,34 @@ class Thread
 	pthread_t tid;
 	pthread_mutex_t _thread_node_mutex;
 	pthread_cond_t _thread_node_cond;
-	Task _node_task;
+	Task* _node_task;
+	Thread();
+	Thread(const Thread*);
 };
 class WaitingThread
 {
-	private:
-	list<Thread> myWaitingThreadList;
+	public:
+	list<Thread*> myWaitingThreadList;
 
 	public:
 	pthread_mutex_t _waiting_list_mutex;
-	list<Thread>::iterator addThread(Thread);
-	Thread getTop();
+	void addThread(Thread*);
+	Thread* getTop();
 	void popTop();
+	int getSize();
+	WaitingThread();
 };
 
 class ActiveThread
 {
 	private:
-	list<Thread> myActiveThreadList;
+	list<Thread*> myActiveThreadList;
 
 	public:
 	pthread_mutex_t _active_list_mutex;
-	list<Thread>::iterator addThread(Thread);
-	void erase(list<Thread>::iterator);
+	void addThread(Thread*);
+	Thread* erase(Thread*);
+	ActiveThread();
 };
 
 class ThreadPool
@@ -77,14 +87,16 @@ class ThreadPool
 	WaitingThread _waitingList;
 	ActiveThread _activeList;
 	pthread_t thread_manager,task_manager;
-	pthread_cond_t thread_manager_cond;
+	pthread_cond_t thread_manager_cond,task_manager_cond;
+	pthread_mutex_t thread_pool_mutex,thread_manager_mutex,task_manager_mutex;
 	int size;
 	int largestNum,smallestNum;
+	vector<pthread_t> tids;
 
 	public:
-	friend void* child_func(void*);
-	friend void* manage_thread(void*);
-	friend void* manage_task(void*);
+	void* child_func(void*);
+	void* manage_thread(void*);
+	void* manage_task(void*);
 
 	public:
 	ThreadPool(int);
@@ -92,4 +104,5 @@ class ThreadPool
 	void initPool();
 	void addTask(void*(*func)(void*,void*),void*,void*);
 	void initSystem();
+	int test;
 };

@@ -2,7 +2,12 @@
 
 void* create_thread(void*args,void* r)
 {
-	cout<<"create thread"<<((int*)args)[0]<<endl;
+	cout<<"-------My Task---------create thread "<<((int*)args)[0]<<endl;
+}
+
+void* test(void*args)
+{
+	cout<<"test..."<<((ThreadPool*)args)->test<<endl;
 }
 
 int main()
@@ -11,20 +16,24 @@ int main()
 	cin>>n;
 
 	ThreadPool myThreadPool(n);
-	myThreadPool.initPool();
+	myThreadPool.test=1000;
+	pthread_t tid1,tid2;
+	//pthread_create(&tid1,NULL,test,(void*)&myThreadPool);
+	//pthread_create(&tid2,NULL,manageTask,(void*)&myThreadPool);
+	myThreadPool.initSystem();
 	
-	TaskList myList;
-	cout<<myList.getSize()<<endl;
 	void*r=NULL;
-	int a1=1,a2=2,a3=3;
-	myList.addTask(create_thread,(void*)&a1,r);
-	myList.addTask(create_thread,(void*)&a2,r);
-	cout<<myList.getSize()<<endl;
-
-	void* (*myTask)(void*,void*);
-	myTask=create_thread;
-
+	int *a=new int[100];
 	
-	(*myTask)((void*)&a3,r);
+	//sleep(5);
+	cout<<"start adding task..."<<endl;
+	for(int i=0;i<10;++i){
+		a[i]=i;
+		myThreadPool.addTask(create_thread,(void*)&a[i],r);
+	}
+
+	pthread_join(tid1,NULL);
+	//pthread_join(tid2,NULL);
+
 	return 0;
 }
