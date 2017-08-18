@@ -151,9 +151,17 @@ void* ThreadPool::manage_thread(void*args)
 	while(1)
 	{
 		//取任务列表头的任务
+		pthread_mutex_lock(&thread_manager_mutex);
 		pthread_mutex_lock(&_taskList._task_mutex);
 		if(_taskList.getSize()==0)
+		{
+			pthread_mutex_unlock(&_taskList._task_mutex);
 			pthread_cond_wait(&thread_manager_cond,&thread_manager_mutex);
+		}else
+			pthread_mutex_unlock(&_taskList._task_mutex);
+
+		pthread_mutex_unlock(&thread_manager_mutex);
+		pthread_mutex_lock(&_taskList._task_mutex);
 		Task taskTemp=_taskList.getFront();
 		cout<<"manage_thread popFront()..."<<_taskList.getSize()<<endl;
 		_taskList.popFront();
@@ -202,11 +210,11 @@ void* ThreadPool::manage_task(void*args)
 	{
 		pthread_mutex_lock(&task_manager_mutex);
 		pthread_mutex_lock(&_taskList._task_mutex);
-		if(_taskList.getSize()!=0)
+		if(_taskList.getSize()==0)
 		{
 			pthread_mutex_unlock(&_taskList._task_mutex);
 			
-			pthread_cond_wait(&task_manager_cond,&_taskList._task_mutex);
+			pthread_cond_wait(&task_manager_cond,&task_manager_mutex);
 			cout<<"receive signal from addTask..."<<endl;
 			cout<<"task to signal..."<<endl;
 			pthread_cond_signal(&thread_manager_cond);
@@ -312,9 +320,9 @@ int TaskList::getSize()
 
 void ThreadPool::addTask(void*(*func)(void*,void*),void*args,void*rtns)
 {
-	//cout<<"start............."<<endl;
+	cout<<"start............."<<endl;
 	pthread_mutex_lock(&_taskList._task_mutex);
-	//cout<<"if lock..........."<<endl;
+	cout<<"if lock..........."<<endl;
 	_taskList.addTask(func,args,rtns);
 	if(_taskList.getSize()==1){
 		cout<<"signal task_manager_cond..."<<endl;

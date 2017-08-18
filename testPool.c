@@ -25,13 +25,21 @@ int main()
 	void*r=NULL;
 	int *a=new int[100];
 	
-	//sleep(5);
+	sleep(5);
 	cout<<"start adding task..."<<endl;
 	for(int i=0;i<10;++i){
 		a[i]=i;
 		myThreadPool.addTask(create_thread,(void*)&a[i],r);
 	}
-
+	
+	sleep(5);
+	cout<<endl;
+	cout<<"start adding task...."<<endl;
+	for(int i=11;i<20;++i)
+	{
+		a[i]=i;
+		myThreadPool.addTask(create_thread,(void*)&a[i],r);
+	}
 	pthread_join(tid1,NULL);
 	//pthread_join(tid2,NULL);
 
