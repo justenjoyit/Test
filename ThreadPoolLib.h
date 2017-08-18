@@ -10,11 +10,14 @@
 #include<list>
 #include<semaphore.h>
 #include<vector>
+#include<set>
 
 using namespace std;
 
 void* manageThread(void*);
 void* manageTask(void*);
+void* childFunc(void*);
+const int maxThreadNum=200;
 class Task
 {
 	public:
@@ -78,6 +81,7 @@ class ActiveThread
 	void addThread(Thread*);
 	Thread* erase(Thread*);
 	ActiveThread();
+	int getSize();
 };
 
 class ThreadPool
@@ -91,7 +95,8 @@ class ThreadPool
 	pthread_mutex_t thread_pool_mutex,thread_manager_mutex,task_manager_mutex;
 	int size;
 	int largestNum,smallestNum;
-	vector<pthread_t> tids;
+	int basicSize;
+	set<pthread_t> tids;
 
 	public:
 	void* child_func(void*);

@@ -1,5 +1,10 @@
 #include"ThreadPoolLib.h"
 
+void cleanUpMutex(void* arg)
+{
+	pthread_mutex_unlock((pthread_mutex_t*)arg);
+}
+
 Task::Task()
 {
 	myFunc=NULL;
@@ -92,6 +97,10 @@ WaitingThread::WaitingThread()
 	pthread_mutex_init(&_waiting_list_mutex,NULL);
 }
 
+int ActiveThread::getSize()
+{
+	return myActiveThreadList.size();
+}
 void* ThreadPool::child_func(void*args)
 {
 	//Thread* tempThread=(Thread*)args;
@@ -100,20 +109,29 @@ void* ThreadPool::child_func(void*args)
 	cout<<"hhhhh  "<<tempThread->tid<<endl;
 	cout<<"child_func:  "<<pthread_self()<<endl;
 	
+	pthread_cleanup_push(cleanUpMutex,(void*)&_waitingList._waiting_list_mutex);
 	pthread_mutex_lock(&_waitingList._waiting_list_mutex);
+	cout<<"add THread p............................"<<endl;
 	_waitingList.addThread(tempThread);
+	cout<<"add THread suc........................."<<endl;
 	pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
+	pthread_cleanup_pop(0);
 
+	cout<<"child_func............addThread"<<pthread_self()<<endl;
 	while(1)
 	{
+		//pthread_cleanup_push(cleanUpMutex,(void*)&(tempThread->_thread_node_mutex));
 		pthread_mutex_lock(&(tempThread->_thread_node_mutex));
 		if(tempThread->_node_task==NULL)
+		{
+			
 			pthread_cond_wait(&(tempThread->_thread_node_cond),&(tempThread->_thread_node_mutex));
-
+		}
 		//线程有任务
 		//执行任务
+		cout<<"................if myFunc....."<<endl;
 		tempThread->_node_task->myFunc(tempThread->_node_task->args,tempThread->_node_task->rtns);
-
+		cout<<"-------------=----myFunc succ.."<<endl;
 		//查找是否还有任务
 		pthread_mutex_lock(&(_taskList._task_mutex));
 		if(_taskList.getSize()==0)
@@ -148,6 +166,7 @@ void* ThreadPool::child_func(void*args)
 void* ThreadPool::manage_thread(void*args)
 {
 	cout<<"manage_thread start..."<<endl;
+	int flag=0;
 	while(1)
 	{
 		//取任务列表头的任务
@@ -157,49 +176,106 @@ void* ThreadPool::manage_thread(void*args)
 		{
 			pthread_mutex_unlock(&_taskList._task_mutex);
 			pthread_cond_wait(&thread_manager_cond,&thread_manager_mutex);
+			cout<<"receive from manage_task................."<<endl;
 		}else
 			pthread_mutex_unlock(&_taskList._task_mutex);
 
-		pthread_mutex_unlock(&thread_manager_mutex);
-		pthread_mutex_lock(&_taskList._task_mutex);
-		Task taskTemp=_taskList.getFront();
-		cout<<"manage_thread popFront()..."<<_taskList.getSize()<<endl;
-		_taskList.popFront();
-		cout<<"manage_thread popFront() success...."<<_taskList.getSize()<<endl;
-		pthread_mutex_unlock(&_taskList._task_mutex);
+		//pthread_mutex_unlock(&thread_manager_mutex);
+		
+		//pthread_mutex_lock(&_taskList._task_mutex);
+		//Task taskTemp=_taskList.getFront();
+		//cout<<"manage_thread popFront()..."<<_taskList.getSize()<<endl;
+		//_taskList.popFront();
+		//cout<<"manage_thread popFront() success...."<<_taskList.getSize()<<endl;
+		//pthread_mutex_unlock(&_taskList._task_mutex);
 	
+		cout<<"-----------------lock waiting"<<endl;
 		//取空闲链表尾的线程
 		pthread_mutex_lock(&_waitingList._waiting_list_mutex);
+		cout<<"-----------------lock suc"<<endl;
 		if(_waitingList.getSize()<=smallestNum)
 		{
+			cout<<"扩容前...."<<_waitingList.getSize()<<" "<<_activeList.getSize()<<" "<<tids.size()<<endl;
+			pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
 			//扩容，空闲线程值小于最小空闲线程数
-		}else if(_waitingList.getSize()>largestNum)
+			//扩大为size的两倍
+			int count=0;
+			for(int i=size;i<maxThreadNum&&i<2*size;++i)
+			{
+				pthread_t tempTid;
+				pthread_create(&tempTid,NULL,childFunc,(void*)this);
+				cout<<"扩容id..........."<<tempTid<<endl;
+				tids.insert(tempTid);
+				count++;
+			}
+			size+=count;
+			largestNum+=count;
+			smallestNum+=count;
+			cout<<"已扩容...."<<_waitingList.getSize()<<" "<<_activeList.getSize()<<endl;
+		}else if(_waitingList.getSize()>largestNum&&_waitingList.getSize()>basicSize&&(flag!=0))
 		{
+			cout<<"000000000000000   larger"<<endl;
+			sleep(1);
+			int count=0;
+			for(int i=_waitingList.getSize();i>=basicSize&&i>=largestNum;--i)
+			{
+				Thread* tThread=_waitingList.getTop();
+				_waitingList.popTop();
+				cout<<"准备销毁线程..."<<tThread->tid<<endl;
+				int res;
+				if((res=pthread_cancel(tThread->tid))!=0)
+				{
+					cout<<"销毁失败..."<<tThread->tid<<endl;
+				}
+				else
+				{
+					count++;
+					tids.erase(tThread->tid);
+					delete tThread;
+					tThread=NULL;
+				}
+			}
+			size=size-count;
+			largestNum-=count;
+			smallestNum-=count;
+			cout<<"销毁后....."<<_waitingList.getSize()<<" "<<tids.size()<<endl;
+			pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
 			//缩小，空闲线程数太多
+		}else{
+			flag=1;
+			cout<<"enough thread..............."<<endl;	
+			pthread_mutex_lock(&_taskList._task_mutex);
+			Task taskTemp=_taskList.getFront();
+			cout<<"manage_thread popFront()..."<<_taskList.getSize()<<endl;
+			_taskList.popFront();
+			cout<<"manage_thread popFront() success...."<<_taskList.getSize()<<endl;
+			pthread_mutex_unlock(&_taskList._task_mutex);
+
+			//取线程
+			cout<<"manage_thread new Thread..."<<endl;
+			Thread* threadTemp;
+			//cout<<"1"<<endl;
+			cout<<_waitingList.getSize()<<endl;
+			cout<<((*(_waitingList.myWaitingThreadList.begin())))->tid<<endl;
+			threadTemp=_waitingList.getTop();
+			cout<<"manage_thread new success...."<<endl;
+			_waitingList.popTop();
+			cout<<"manage_thread popTop success..."<<_waitingList.getSize()<<endl;
+			pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
+		
+			//cout<<"manage_thread new Thread..."<<_waitingList.getSize()<<endl;
+			threadTemp->_node_task=new Task(taskTemp);
+	
+			//将线程和任务加入活动队列并唤醒
+			pthread_mutex_lock(&_activeList._active_list_mutex);
+			_activeList.addThread(threadTemp);
+			pthread_mutex_unlock(&_activeList._active_list_mutex);
+		
+			cout<<"thread to signal..."<<endl;
+			pthread_cond_signal(&(threadTemp->_thread_node_cond));
 		}
-	
-		//取线程
-		cout<<"manage_thread new Thread..."<<endl;
-		Thread* threadTemp;
-		cout<<"1"<<endl;
-		cout<<_waitingList.getSize()<<endl;
-		cout<<((*(_waitingList.myWaitingThreadList.begin())))->tid<<endl;
-		threadTemp=_waitingList.getTop();
-		cout<<"manage_thread new success...."<<endl;
-		_waitingList.popTop();
-		cout<<"manage_thread popTop success..."<<_waitingList.getSize()<<endl;
-		pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
-		
-		//cout<<"manage_thread new Thread..."<<_waitingList.getSize()<<endl;
-		threadTemp->_node_task=new Task(taskTemp);
-	
-		//将线程和任务加入活动队列并唤醒
-		pthread_mutex_lock(&_activeList._active_list_mutex);
-		_activeList.addThread(threadTemp);
-		pthread_mutex_unlock(&_activeList._active_list_mutex);
-		
-		cout<<"thread to signal..."<<endl;
-		pthread_cond_signal(&(threadTemp->_thread_node_cond));
+		pthread_mutex_unlock(&thread_manager_mutex);
+
 	}
 }
 
@@ -236,10 +312,10 @@ ThreadPool::ThreadPool(int num)
 
 	cout<<"ThreadPool start..."<<endl;
 	pthread_mutex_lock(&thread_pool_mutex);
-	size=num;
-	largestNum=size/3*2;
-	smallestNum=size/4;
-	tids=vector<pthread_t>(num);
+	size=num+num/10+1;
+	largestNum=num;
+	smallestNum=size/10+1;
+	basicSize=size;
 	_taskList=TaskList();
 	_waitingList=WaitingThread();
 	_activeList=ActiveThread();
@@ -249,7 +325,7 @@ ThreadPool::ThreadPool(int num)
 
 ThreadPool::~ThreadPool()
 {
-	for(vector<pthread_t>::iterator i=tids.begin();i!=tids.end();++i)
+	for(set<pthread_t>::iterator i=tids.begin();i!=tids.end();++i)
 		pthread_join(*i,NULL);
 	pthread_join(thread_manager,NULL);
 	pthread_join(task_manager,NULL);
@@ -274,7 +350,7 @@ void ThreadPool::initPool()
 	pthread_mutex_lock(&thread_pool_mutex);
 
 	//cout<<"lock thread_pool..."<<endl;
-	for(int i=0;i<tids.size();++i)
+	for(int i=0;i<size;++i)
 	{
 		//pthread_mutex_lock(&_waitingList._waiting_list_mutex);
 		//Thread* temp=new Thread();
@@ -287,8 +363,10 @@ void ThreadPool::initPool()
 		//initArgs->pThreadPool=this;
 		//initArgs->pThread=temp;
 		//cout<<"create child..."<<tids[i]<<endl;
-		pthread_create(&tids[i],NULL,childFunc,(void*)this);
-		cout<<"create child..."<<tids[i]<<endl;
+		pthread_t tempTid;
+		pthread_create(&tempTid,NULL,childFunc,(void*)this);
+		tids.insert(tempTid);
+		cout<<"create child..."<<tempTid<<endl;
 	}
 	pthread_mutex_unlock(&thread_pool_mutex);
 	cout<<"initPool end...size "<<_waitingList.getSize()<<endl;
