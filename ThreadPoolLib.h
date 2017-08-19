@@ -63,7 +63,7 @@ class WaitingThread
 	list<Thread*> myWaitingThreadList;
 
 	public:
-	pthread_mutex_t _waiting_list_mutex;
+	//pthread_mutex_t _waiting_list_mutex;
 	void addThread(Thread*);
 	Thread* getTop();
 	void popTop();
@@ -77,7 +77,7 @@ class ActiveThread
 	list<Thread*> myActiveThreadList;
 
 	public:
-	pthread_mutex_t _active_list_mutex;
+	//pthread_mutex_t _active_list_mutex;
 	void addThread(Thread*);
 	Thread* erase(Thread*);
 	ActiveThread();
@@ -92,7 +92,7 @@ class ThreadPool
 	ActiveThread _activeList;
 	pthread_t thread_manager,task_manager;
 	pthread_cond_t thread_manager_cond,task_manager_cond;
-	pthread_mutex_t thread_pool_mutex,thread_manager_mutex,task_manager_mutex;
+	pthread_mutex_t thread_pool_mutex,thread_manager_mutex,task_manager_mutex,_active_list_mutex,_waiting_list_mutex;
 	int size;
 	int largestNum,smallestNum;
 	int basicSize;
@@ -109,5 +109,4 @@ class ThreadPool
 	void initPool();
 	void addTask(void*(*func)(void*,void*),void*,void*);
 	void initSystem();
-	int test;
 };

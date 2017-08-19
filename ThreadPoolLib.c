@@ -82,13 +82,13 @@ int WaitingThread::getSize()
 ActiveThread::ActiveThread()
 {
 	myActiveThreadList=list<Thread*>(0);
-	pthread_mutex_init(&_active_list_mutex,NULL);
+	//pthread_mutex_init(&_active_list_mutex,NULL);
 }
 
 WaitingThread::WaitingThread()
 {
 	myWaitingThreadList=list<Thread*>(0);
-	pthread_mutex_init(&_waiting_list_mutex,NULL);
+	//pthread_mutex_init(&_waiting_list_mutex,NULL);
 }
 
 int ActiveThread::getSize()
@@ -100,12 +100,12 @@ void* ThreadPool::child_func(void*args)
 	Thread* tempThread=new Thread();
 	tempThread->tid=pthread_self();
 		
-	pthread_cleanup_push(cleanUpMutex,(void*)&_waitingList._waiting_list_mutex);
-	pthread_mutex_lock(&_waitingList._waiting_list_mutex);
+	pthread_cleanup_push(cleanUpMutex,(void*)&_waiting_list_mutex);
+	pthread_mutex_lock(&_waiting_list_mutex);
 	
 	_waitingList.addThread(tempThread);
 	
-	pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
+	pthread_mutex_unlock(&_waiting_list_mutex);
 	pthread_cleanup_pop(0);
 
 	
@@ -135,14 +135,14 @@ void* ThreadPool::child_func(void*args)
 			
 			//从活动线程链表中删除
 			//使线程变成游离态
-			pthread_mutex_lock(&_activeList._active_list_mutex);
+			pthread_mutex_lock(&_active_list_mutex);
 			tempThread=_activeList.erase(tempThread);
-			pthread_mutex_unlock(&_activeList._active_list_mutex);
+			pthread_mutex_unlock(&_active_list_mutex);
 			
 			//将线程加入空闲堆栈
-			pthread_mutex_lock(&_waitingList._waiting_list_mutex);
+			pthread_mutex_lock(&_waiting_list_mutex);
 			_waitingList.addThread(tempThread);
-			pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
+			pthread_mutex_unlock(&_waiting_list_mutex);
 		}else{
 			//取任务链表头
 			tempThread->_node_task=new Task(_taskList.getFront());
@@ -170,13 +170,13 @@ void* ThreadPool::manage_thread(void*args)
 			pthread_mutex_unlock(&_taskList._task_mutex);
 
 		//取空闲链表尾的线程
-		pthread_mutex_lock(&_waitingList._waiting_list_mutex);
+		pthread_mutex_lock(&_waiting_list_mutex);
 		
 		if(_waitingList.getSize()<=smallestNum)
 		{
 			cout<<"扩容前...."<<tids.size()<<endl;
 
-			pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
+			pthread_mutex_unlock(&_waiting_list_mutex);
 			//扩容，空闲线程值小于最小空闲线程数
 			//扩大为size的两倍
 			int count=0;
@@ -218,7 +218,7 @@ void* ThreadPool::manage_thread(void*args)
 			largestNum-=count;
 			smallestNum-=count;
 			cout<<"缩容后....."<<tids.size()<<endl;
-			pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
+			pthread_mutex_unlock(&_waiting_list_mutex);
 			//缩小，空闲线程数太多
 		}else{
 			flag=1;
@@ -237,14 +237,14 @@ void* ThreadPool::manage_thread(void*args)
 			threadTemp=_waitingList.getTop();
 			_waitingList.popTop();
 			
-			pthread_mutex_unlock(&_waitingList._waiting_list_mutex);
+			pthread_mutex_unlock(&_waiting_list_mutex);
 		
 			threadTemp->_node_task=new Task(taskTemp);
 	
 			//将线程和任务加入活动队列并唤醒
-			pthread_mutex_lock(&_activeList._active_list_mutex);
+			pthread_mutex_lock(&_active_list_mutex);
 			_activeList.addThread(threadTemp);
-			pthread_mutex_unlock(&_activeList._active_list_mutex);
+			pthread_mutex_unlock(&_active_list_mutex);
 		
 			pthread_cond_signal(&(threadTemp->_thread_node_cond));
 		}
@@ -276,6 +276,9 @@ ThreadPool::ThreadPool(int num)
 	pthread_mutex_init(&thread_pool_mutex,NULL);
 	pthread_mutex_init(&thread_manager_mutex,NULL);
 	pthread_mutex_init(&task_manager_mutex,NULL);
+	pthread_mutex_init(&_active_list_mutex,NULL);
+	pthread_mutex_init(&_waiting_list_mutex,NULL);
+
 	pthread_cond_init(&thread_manager_cond,NULL);
 	pthread_cond_init(&task_manager_cond,NULL);
 
@@ -287,7 +290,6 @@ ThreadPool::ThreadPool(int num)
 	_taskList=TaskList();
 	_waitingList=WaitingThread();
 	_activeList=ActiveThread();
-	test=1000;
 	pthread_mutex_unlock(&thread_pool_mutex);
 }
 
