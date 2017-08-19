@@ -82,13 +82,11 @@ int WaitingThread::getSize()
 ActiveThread::ActiveThread()
 {
 	myActiveThreadList=list<Thread*>(0);
-	//pthread_mutex_init(&_active_list_mutex,NULL);
 }
 
 WaitingThread::WaitingThread()
 {
 	myWaitingThreadList=list<Thread*>(0);
-	//pthread_mutex_init(&_waiting_list_mutex,NULL);
 }
 
 int ActiveThread::getSize()
@@ -111,7 +109,6 @@ void* ThreadPool::child_func(void*args)
 	
 	while(1)
 	{
-		//pthread_cleanup_push(cleanUpMutex,(void*)&(tempThread->_thread_node_mutex));
 		pthread_mutex_lock(&(tempThread->_thread_node_mutex));
 		if(tempThread->_node_task==NULL)
 		{
@@ -124,10 +121,10 @@ void* ThreadPool::child_func(void*args)
 		tempThread->_node_task->myFunc(tempThread->_node_task->args,tempThread->_node_task->rtns);
 		
 		//查找是否还有任务
-		pthread_mutex_lock(&(_taskList._task_mutex));
+		pthread_mutex_lock(&(_task_mutex));
 		if(_taskList.getSize()==0)
 		{
-			pthread_mutex_unlock(&_taskList._task_mutex);
+			pthread_mutex_unlock(&_task_mutex);
 			//没有任务
 			//将线程加入空闲
 			delete tempThread->_node_task;
@@ -147,7 +144,7 @@ void* ThreadPool::child_func(void*args)
 			//取任务链表头
 			tempThread->_node_task=new Task(_taskList.getFront());
 			_taskList.popFront();
-			pthread_mutex_unlock(&_taskList._task_mutex);
+			pthread_mutex_unlock(&_task_mutex);
 		}
 
 		pthread_mutex_unlock(&(tempThread->_thread_node_mutex));
@@ -161,13 +158,13 @@ void* ThreadPool::manage_thread(void*args)
 	{
 		//取任务列表头的任务
 		pthread_mutex_lock(&thread_manager_mutex);
-		pthread_mutex_lock(&_taskList._task_mutex);
+		pthread_mutex_lock(&_task_mutex);
 		if(_taskList.getSize()==0)
 		{
-			pthread_mutex_unlock(&_taskList._task_mutex);
+			pthread_mutex_unlock(&_task_mutex);
 			pthread_cond_wait(&thread_manager_cond,&thread_manager_mutex);
 		}else
-			pthread_mutex_unlock(&_taskList._task_mutex);
+			pthread_mutex_unlock(&_task_mutex);
 
 		//取空闲链表尾的线程
 		pthread_mutex_lock(&_waiting_list_mutex);
@@ -223,12 +220,12 @@ void* ThreadPool::manage_thread(void*args)
 		}else{
 			flag=1;
 				
-			pthread_mutex_lock(&_taskList._task_mutex);
+			pthread_mutex_lock(&_task_mutex);
 			
 			Task taskTemp=_taskList.getFront();
 			_taskList.popFront();
 			
-			pthread_mutex_unlock(&_taskList._task_mutex);
+			pthread_mutex_unlock(&_task_mutex);
 
 			//取线程
 			
@@ -258,15 +255,15 @@ void* ThreadPool::manage_task(void*args)
 	while(1)
 	{
 		pthread_mutex_lock(&task_manager_mutex);
-		pthread_mutex_lock(&_taskList._task_mutex);
+		pthread_mutex_lock(&_task_mutex);
 		if(_taskList.getSize()==0)
 		{
-			pthread_mutex_unlock(&_taskList._task_mutex);
+			pthread_mutex_unlock(&_task_mutex);
 			
 			pthread_cond_wait(&task_manager_cond,&task_manager_mutex);
 			pthread_cond_signal(&thread_manager_cond);
 		}else
-			pthread_mutex_unlock(&_taskList._task_mutex);
+			pthread_mutex_unlock(&_task_mutex);
 		pthread_mutex_unlock(&task_manager_mutex);	
 	}
 }
@@ -278,6 +275,7 @@ ThreadPool::ThreadPool(int num)
 	pthread_mutex_init(&task_manager_mutex,NULL);
 	pthread_mutex_init(&_active_list_mutex,NULL);
 	pthread_mutex_init(&_waiting_list_mutex,NULL);
+	pthread_mutex_init(&_task_mutex,NULL);
 
 	pthread_cond_init(&thread_manager_cond,NULL);
 	pthread_cond_init(&task_manager_cond,NULL);
@@ -301,12 +299,6 @@ ThreadPool::~ThreadPool()
 	pthread_join(task_manager,NULL);
 }
 
-struct Arg
-{
-	ThreadPool* pThreadPool;
-	Thread* pThread;
-};
-
 void* childFunc(void* args)
 {
 	((ThreadPool*)args)->child_func(NULL);
@@ -327,7 +319,6 @@ void ThreadPool::initPool()
 
 TaskList::TaskList()
 {
-	pthread_mutex_init(&_task_mutex,NULL);
 }
 
 void TaskList::addTask(void*(*func)(void*,void*),void*a,void*r)
@@ -343,13 +334,13 @@ int TaskList::getSize()
 
 void ThreadPool::addTask(void*(*func)(void*,void*),void*args,void*rtns)
 {
-	pthread_mutex_lock(&_taskList._task_mutex);
+	pthread_mutex_lock(&_task_mutex);
 	
 	_taskList.addTask(func,args,rtns);
 	if(_taskList.getSize()==1){
 		pthread_cond_signal(&task_manager_cond);
 	}
-	pthread_mutex_unlock(&_taskList._task_mutex);
+	pthread_mutex_unlock(&_task_mutex);
 }
 
 void TaskList::popFront()

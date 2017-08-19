@@ -16,7 +16,7 @@ int main()
 	cin>>n;
 
 	ThreadPool myThreadPool(n);
-	pthread_t tid1;
+	//pthread_t tid1;
 	
 	myThreadPool.initSystem();
 	
@@ -36,7 +36,7 @@ int main()
 	for(int i=11;i<20;++i)
 	{
 		a[i]=i;
-		myThreadPool.addTask(create_thread,(void*)&a[i],r);
+		myThreadPool.addTask(doTask,(void*)&a[i],r);
 	}
 
 	sleep(3);
@@ -45,9 +45,10 @@ int main()
 	for(int i=21;i<30;++i)
 	{
 		a[i]=i;
-		myThreadPool.addTask(doTask,(void*)&a[i],NULL);
+		myThreadPool.addTask(create_thread,(void*)&a[i],r);
 	}
-	pthread_join(tid1,NULL);
+
+	//pthread_join(tid1,NULL);
 	
 
 	return 0;

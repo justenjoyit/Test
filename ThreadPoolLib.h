@@ -39,7 +39,7 @@ class TaskList
 	list<Task> myTaskList;
 
 	public:
-	pthread_mutex_t _task_mutex;
+	//pthread_mutex_t _task_mutex;
 	TaskList();
 	void addTask(void*(*func)(void*,void*),void*,void*);
 	void popFront();
@@ -92,7 +92,7 @@ class ThreadPool
 	ActiveThread _activeList;
 	pthread_t thread_manager,task_manager;
 	pthread_cond_t thread_manager_cond,task_manager_cond;
-	pthread_mutex_t thread_pool_mutex,thread_manager_mutex,task_manager_mutex,_active_list_mutex,_waiting_list_mutex;
+	pthread_mutex_t thread_pool_mutex,thread_manager_mutex,task_manager_mutex,_active_list_mutex,_waiting_list_mutex,_task_mutex;
 	int size;
 	int largestNum,smallestNum;
 	int basicSize;
