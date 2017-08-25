@@ -57,7 +57,7 @@ void ActiveThread::addThread(Thread* temp)
 
 Thread* ActiveThread::erase(Thread* temp)
 {
-	list<Thread*>::iterator i=myActiveThreadList.begin();
+	std::list<Thread*>::iterator i=myActiveThreadList.begin();
 	for(;i!=myActiveThreadList.end();++i)
 	{
 		if(*i==temp)
@@ -65,7 +65,7 @@ Thread* ActiveThread::erase(Thread* temp)
 	}
 	if(i==myActiveThreadList.end())
 	{
-		cout<<"Error: ActiveThread::erase() "<<endl;
+		std::cout<<"Error: ActiveThread::erase() "<<std::endl;
 		return NULL;
 	}
 
@@ -81,12 +81,12 @@ int WaitingThread::getSize()
 
 ActiveThread::ActiveThread()
 {
-	myActiveThreadList=list<Thread*>(0);
+	myActiveThreadList=std::list<Thread*>(0);
 }
 
 WaitingThread::WaitingThread()
 {
-	myWaitingThreadList=list<Thread*>(0);
+	myWaitingThreadList=std::list<Thread*>(0);
 }
 
 int ActiveThread::getSize()
@@ -171,7 +171,7 @@ void* ThreadPool::manage_thread(void*args)
 		
 		if(_waitingList.getSize()<=smallestNum)
 		{
-			cout<<"扩容前...."<<tids.size()<<endl;
+			std::cout<<"扩容前...."<<tids.size()<<std::endl;
 
 			pthread_mutex_unlock(&_waiting_list_mutex);
 			//扩容，空闲线程值小于最小空闲线程数
@@ -187,11 +187,11 @@ void* ThreadPool::manage_thread(void*args)
 			size+=count;
 			largestNum+=count;
 			smallestNum+=count;
-			cout<<"扩容后...."<<tids.size()<<endl;
+			std::cout<<"扩容后...."<<tids.size()<<std::endl;
 
 		}else if(_waitingList.getSize()>largestNum&&_waitingList.getSize()>basicSize&&(flag!=0))
 		{
-			cout<<"缩容前...."<<tids.size()<<endl;
+			std::cout<<"缩容前...."<<tids.size()<<std::endl;
 			int count=0;
 			for(int i=_waitingList.getSize();i>=basicSize&&i>=largestNum;--i)
 			{
@@ -201,7 +201,7 @@ void* ThreadPool::manage_thread(void*args)
 				int res;
 				if((res=pthread_cancel(tThread->tid))!=0)
 				{
-					cout<<"销毁失败..."<<tThread->tid<<endl;
+					std::cout<<"销毁失败..."<<tThread->tid<<std::endl;
 				}
 				else
 				{
@@ -214,7 +214,7 @@ void* ThreadPool::manage_thread(void*args)
 			size=size-count;
 			largestNum-=count;
 			smallestNum-=count;
-			cout<<"缩容后....."<<tids.size()<<endl;
+			std::cout<<"缩容后....."<<tids.size()<<std::endl;
 			pthread_mutex_unlock(&_waiting_list_mutex);
 			//缩小，空闲线程数太多
 		}else{
@@ -293,7 +293,7 @@ ThreadPool::ThreadPool(int num)
 
 ThreadPool::~ThreadPool()
 {
-	for(set<pthread_t>::iterator i=tids.begin();i!=tids.end();++i)
+	for(std::set<pthread_t>::iterator i=tids.begin();i!=tids.end();++i)
 		pthread_join(*i,NULL);
 	pthread_join(thread_manager,NULL);
 	pthread_join(task_manager,NULL);

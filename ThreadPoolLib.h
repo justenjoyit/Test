@@ -15,7 +15,6 @@
 #include<vector>
 #include<set>
 
-using namespace std;
 
 void* manageThread(void*);
 void* manageTask(void*);
@@ -39,7 +38,7 @@ class Task
 class TaskList
 {
 	private:
-	list<Task> myTaskList;
+	std::list<Task> myTaskList;
 
 	public:
 	//pthread_mutex_t _task_mutex;
@@ -63,7 +62,7 @@ class Thread
 class WaitingThread
 {
 	public:
-	list<Thread*> myWaitingThreadList;
+	std::list<Thread*> myWaitingThreadList;
 
 	public:
 	//pthread_mutex_t _waiting_list_mutex;
@@ -77,7 +76,7 @@ class WaitingThread
 class ActiveThread
 {
 	private:
-	list<Thread*> myActiveThreadList;
+	std::list<Thread*> myActiveThreadList;
 
 	public:
 	//pthread_mutex_t _active_list_mutex;
@@ -99,7 +98,7 @@ class ThreadPool
 	int size;
 	int largestNum,smallestNum;
 	int basicSize;
-	set<pthread_t> tids;
+	std::set<pthread_t> tids;
 
 	public:
 	void* child_func(void*);
