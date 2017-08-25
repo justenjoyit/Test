@@ -1,3 +1,6 @@
+#ifndef THREADPOOLLIB_H
+#define THREADPOOLLIB_H
+
 #include<iostream>
 #include<stdio.h>
 #include<pthread.h>
@@ -110,3 +113,5 @@ class ThreadPool
 	void addTask(void*(*func)(void*,void*),void*,void*);
 	void initSystem();
 };
+
+#endif
