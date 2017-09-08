@@ -27,6 +27,14 @@ Thread::Thread()
 	_node_task=NULL;
 }
 
+Thread::~Thread()
+{
+	pthread_mutex_destroy(&_thread_node_mutex);
+	pthread_cond_destroy(&_thread_node_cond);
+	delete _node_task;
+	_node_task=NULL;
+}
+
 Thread::Thread(const Thread* temp)
 {
 	tid=temp->tid;
@@ -55,7 +63,7 @@ void ActiveThread::addThread(Thread* temp)
 	myActiveThreadList.push_back(temp);
 }
 
-Thread* ActiveThread::erase(Thread* temp)
+void ActiveThread::erase(Thread* temp)
 {
 	std::list<Thread*>::iterator i=myActiveThreadList.begin();
 	for(;i!=myActiveThreadList.end();++i)
@@ -66,12 +74,12 @@ Thread* ActiveThread::erase(Thread* temp)
 	if(i==myActiveThreadList.end())
 	{
 		std::cout<<"Error: ActiveThread::erase() "<<std::endl;
-		return NULL;
+		//return NULL;
 	}
 
-	Thread* newThread=new Thread(*i);
+	//Thread* newThread=new Thread(*i);
 	myActiveThreadList.erase(i);
-	return newThread;
+	//return temp;
 }
 
 int WaitingThread::getSize()
@@ -98,17 +106,18 @@ void* ThreadPool::child_func(void*args)
 	Thread* tempThread=new Thread();
 	tempThread->tid=pthread_self();
 		
-	pthread_cleanup_push(cleanUpMutex,(void*)&_waiting_list_mutex);
+	//pthread_cleanup_push(cleanUpMutex,(void*)&_waiting_list_mutex);
 	pthread_mutex_lock(&_waiting_list_mutex);
 	
 	_waitingList.addThread(tempThread);
 	
 	pthread_mutex_unlock(&_waiting_list_mutex);
-	pthread_cleanup_pop(0);
+	//pthread_cleanup_pop(0);
 
 	
 	while(1)
 	{
+
 		pthread_mutex_lock(&(tempThread->_thread_node_mutex));
 		if(tempThread->_node_task==NULL)
 		{
@@ -133,7 +142,7 @@ void* ThreadPool::child_func(void*args)
 			//从活动线程链表中删除
 			//使线程变成游离态
 			pthread_mutex_lock(&_active_list_mutex);
-			tempThread=_activeList.erase(tempThread);
+			_activeList.erase(tempThread);
 			pthread_mutex_unlock(&_active_list_mutex);
 			
 			//将线程加入空闲堆栈
@@ -149,6 +158,8 @@ void* ThreadPool::child_func(void*args)
 
 		pthread_mutex_unlock(&(tempThread->_thread_node_mutex));
 	}
+	//delete tempThread;
+	//tempThread=NULL;
 }
 
 void* ThreadPool::manage_thread(void*args)
@@ -165,14 +176,14 @@ void* ThreadPool::manage_thread(void*args)
 			pthread_cond_wait(&thread_manager_cond,&thread_manager_mutex);
 		}else
 			pthread_mutex_unlock(&_task_mutex);
-
+		
 		//取空闲链表尾的线程
 		pthread_mutex_lock(&_waiting_list_mutex);
 		
 		if(_waitingList.getSize()<=smallestNum)
 		{
 			std::cout<<"扩容前...."<<tids.size()<<std::endl;
-
+			pthread_mutex_unlock(&thread_manager_mutex);
 			pthread_mutex_unlock(&_waiting_list_mutex);
 			//扩容，空闲线程值小于最小空闲线程数
 			//扩大为size的两倍
@@ -207,17 +218,22 @@ void* ThreadPool::manage_thread(void*args)
 				{
 					count++;
 					tids.erase(tThread->tid);
-					delete tThread;
-					tThread=NULL;
+					//pthread_mutex_destroy(&tThread->_thread_node_mutex);
+					//pthread_cond_destroy(&tThread->_thread_node_cond);
+					//delete tThread;
+					//tThread=NULL;
 				}
+				
 			}
 			size=size-count;
 			largestNum-=count;
 			smallestNum-=count;
 			std::cout<<"缩容后....."<<tids.size()<<std::endl;
 			pthread_mutex_unlock(&_waiting_list_mutex);
+			pthread_mutex_unlock(&thread_manager_mutex);
 			//缩小，空闲线程数太多
 		}else{
+			pthread_mutex_unlock(&thread_manager_mutex);
 			flag=1;
 				
 			pthread_mutex_lock(&_task_mutex);
@@ -235,7 +251,13 @@ void* ThreadPool::manage_thread(void*args)
 			_waitingList.popTop();
 			
 			pthread_mutex_unlock(&_waiting_list_mutex);
-		
+			
+			if(threadTemp->_node_task!=NULL)
+			{
+				delete threadTemp->_node_task;
+				threadTemp->_node_task=NULL;
+			}
+
 			threadTemp->_node_task=new Task(taskTemp);
 	
 			//将线程和任务加入活动队列并唤醒
@@ -245,7 +267,7 @@ void* ThreadPool::manage_thread(void*args)
 		
 			pthread_cond_signal(&(threadTemp->_thread_node_cond));
 		}
-		pthread_mutex_unlock(&thread_manager_mutex);
+		//pthread_mutex_unlock(&thread_manager_mutex);
 
 	}
 }
@@ -294,9 +316,9 @@ ThreadPool::ThreadPool(int num)
 ThreadPool::~ThreadPool()
 {
 	for(std::set<pthread_t>::iterator i=tids.begin();i!=tids.end();++i)
-		pthread_join(*i,NULL);
-	pthread_join(thread_manager,NULL);
-	pthread_join(task_manager,NULL);
+		pthread_cancel(*i);
+	pthread_cancel(thread_manager);
+	pthread_cancel(task_manager);
 }
 
 void* childFunc(void* args)

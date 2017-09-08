@@ -57,6 +57,7 @@ class Thread
 	pthread_cond_t _thread_node_cond;
 	Task* _node_task;
 	Thread();
+	~Thread();
 	Thread(const Thread*);
 };
 class WaitingThread
@@ -81,7 +82,7 @@ class ActiveThread
 	public:
 	//pthread_mutex_t _active_list_mutex;
 	void addThread(Thread*);
-	Thread* erase(Thread*);
+	void erase(Thread*);
 	ActiveThread();
 	int getSize();
 };
