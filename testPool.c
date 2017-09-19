@@ -52,7 +52,7 @@ int main()
 	//pthread_join(tid1,NULL);
 	
 	sleep(3);
-	delete a;
+	delete []a;
 	a=NULL;
 	return 0;
 }
