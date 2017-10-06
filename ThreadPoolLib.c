@@ -19,6 +19,19 @@ Task::Task(const Task& temp)
 	rtns=temp.rtns;
 }
 
+TaskList::~TaskList()
+{
+	for(int i=myTaskList.size();i>0;--i)
+	{
+		Task* temp=myTaskList.back();
+		myTaskList.pop_back();
+		delete temp;
+		temp=NULL;		
+		//temp->myFunc=NULL;
+		//temp->args=NULL;
+		//temp->rtns=NULL;
+	}
+}
 Thread::Thread()
 {
 	tid=0;
@@ -53,6 +66,27 @@ Thread* WaitingThread::getTop()
 	return myWaitingThreadList.back();
 }
 
+ActiveThread::~ActiveThread()
+{	
+	for(int i=myActiveThreadList.size();i>0;i--)
+	{
+		Thread* temp=myActiveThreadList.back();
+		myActiveThreadList.pop_back();
+		delete temp;
+		temp=NULL;
+	}
+}
+	
+WaitingThread::~WaitingThread()
+{
+	for(int i=myWaitingThreadList.size();i>0;i--)
+	{
+		Thread* temp=myWaitingThreadList.back();
+		myWaitingThreadList.pop_back();
+		delete temp;
+		temp=NULL;
+	}
+}
 void WaitingThread::popTop()
 {
 	myWaitingThreadList.pop_back();
@@ -128,7 +162,8 @@ void* ThreadPool::child_func(void*args)
 		//执行任务
 		
 		tempThread->_node_task->myFunc(tempThread->_node_task->args,tempThread->_node_task->rtns);
-		
+		delete tempThread->_node_task;
+		tempThread->_node_task=NULL;
 		//查找是否还有任务
 		pthread_mutex_lock(&(_task_mutex));
 		if(_taskList.getSize()==0)
@@ -136,9 +171,7 @@ void* ThreadPool::child_func(void*args)
 			pthread_mutex_unlock(&_task_mutex);
 			//没有任务
 			//将线程加入空闲
-			delete tempThread->_node_task;
-			tempThread->_node_task=NULL;
-			
+						
 			//从活动线程链表中删除
 			//使线程变成游离态
 			pthread_mutex_lock(&_active_list_mutex);
@@ -151,7 +184,7 @@ void* ThreadPool::child_func(void*args)
 			pthread_mutex_unlock(&_waiting_list_mutex);
 		}else{
 			//取任务链表头
-			tempThread->_node_task=new Task(_taskList.getFront());
+			tempThread->_node_task=_taskList.getFront();
 			_taskList.popFront();
 			pthread_mutex_unlock(&_task_mutex);
 		}
@@ -238,7 +271,7 @@ void* ThreadPool::manage_thread(void*args)
 				
 			pthread_mutex_lock(&_task_mutex);
 			
-			Task taskTemp=_taskList.getFront();
+			Task* taskTemp=_taskList.getFront();
 			_taskList.popFront();
 			
 			pthread_mutex_unlock(&_task_mutex);
@@ -258,7 +291,10 @@ void* ThreadPool::manage_thread(void*args)
 				threadTemp->_node_task=NULL;
 			}
 
-			threadTemp->_node_task=new Task(taskTemp);
+			threadTemp->_node_task=taskTemp;
+			//threadTemp->_node_task->myFunc=taskTemp.myFunc;
+			//threadTemp->_node_task->args=taskTemp.args;
+			//threadTemp->_node_task->rtns=taskTemp.rtns;
 	
 			//将线程和任务加入活动队列并唤醒
 			pthread_mutex_lock(&_active_list_mutex);
@@ -319,6 +355,7 @@ ThreadPool::~ThreadPool()
 		pthread_cancel(*i);
 	pthread_cancel(thread_manager);
 	pthread_cancel(task_manager);
+	
 }
 
 void* childFunc(void* args)
@@ -345,7 +382,7 @@ TaskList::TaskList()
 
 void TaskList::addTask(void*(*func)(void*,void*),void*a,void*r)
 {
-	Task temp(func,a,r);
+	Task *temp=new Task(func,a,r);
 	myTaskList.push_back(temp);
 }
 
@@ -370,7 +407,7 @@ void TaskList::popFront()
 	myTaskList.pop_front();
 }
 
-Task TaskList::getFront()
+Task* TaskList::getFront()
 {
 	return myTaskList.front();
 }

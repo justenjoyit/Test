@@ -19,7 +19,7 @@
 void* manageThread(void*);
 void* manageTask(void*);
 void* childFunc(void*);
-const int maxThreadNum=200;
+const int maxThreadNum=100000;
 class Task
 {
 	public:
@@ -38,14 +38,15 @@ class Task
 class TaskList
 {
 	private:
-	std::list<Task> myTaskList;
+	std::list<Task*> myTaskList;
 
 	public:
 	//pthread_mutex_t _task_mutex;
 	TaskList();
+	~TaskList();
 	void addTask(void*(*func)(void*,void*),void*,void*);
 	void popFront();
-	Task getFront();
+	Task* getFront();
 	int getSize();
 };
 
@@ -67,6 +68,7 @@ class WaitingThread
 
 	public:
 	//pthread_mutex_t _waiting_list_mutex;
+	~WaitingThread();
 	void addThread(Thread*);
 	Thread* getTop();
 	void popTop();
@@ -81,6 +83,7 @@ class ActiveThread
 
 	public:
 	//pthread_mutex_t _active_list_mutex;
+	~ActiveThread();
 	void addThread(Thread*);
 	void erase(Thread*);
 	ActiveThread();
